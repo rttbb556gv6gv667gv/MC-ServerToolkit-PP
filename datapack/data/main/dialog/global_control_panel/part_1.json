@@ -1,0 +1,103 @@
+{
+  "type": "minecraft:multi_action",
+  "title": "⚙️ Global Control Panel",
+  "body": {
+    "type": "minecraft:plain_message",
+    "contents": "Lütfen her bir ayarı seçin ve onaylayın."
+  },
+  "inputs": [
+    {
+      "type": "minecraft:single_option",
+      "key": "1",
+      "label": "GLC Menu",
+      "label_visible": true,
+      "options": [
+        {
+          "id": "1",
+          "display": "Açık"
+        },
+        {
+          "id": "0",
+          "display": "Kapalı"
+        }
+      ]
+    },
+    {
+      "type": "minecraft:single_option",
+      "key": "2",
+      "label": "Admin Loop",
+      "label_visible": true,
+      "options": [
+        {
+          "id": "1",
+          "display": "Açık"
+        },
+        {
+          "id": "0",
+          "display": "Kapalı"
+        }
+      ]
+    },
+    {
+      "type": "minecraft:single_option",
+      "key": "3",
+      "label": "Tick Control",
+      "label_visible": true,
+      "options": [
+        {
+          "id": "1",
+          "display": "Açık"
+        },
+        {
+          "id": "0",
+          "display": "Kapalı"
+        }
+      ]
+    },
+    {
+      "type": "minecraft:single_option",
+      "key": "4",
+      "label": "Cooldown",
+      "label_visible": true,
+      "options": [
+        {
+          "id": "1",
+          "display": "Açık"
+        },
+        {
+          "id": "0",
+          "display": "Kapalı"
+        }
+      ]
+    },
+    {
+      "type": "minecraft:single_option",
+      "key": "5",
+      "label": "Main Loop",
+      "label_visible": true,
+      "options": [
+        {
+          "id": "1",
+          "display": "Açık"
+        },
+        {
+          "id": "0",
+          "display": "Kapalı"
+        }
+      ]
+    }
+  ],
+  "can_close_with_escape": true,
+  "pause": false,
+  "after_action": "close",
+  "columns": 1,
+  "actions": [
+    {
+      "label": "Uygula",
+      "action": {
+        "type": "minecraft:dynamic/run_command",
+        "template": "/function main:set_globals {\"glc_menu\":$(1),\"admin_loop\":$(2),\"tick\":$(3),\"cooldown\":$(4),\"main\":$(5)}"
+      }
+    }
+  ]
+}
