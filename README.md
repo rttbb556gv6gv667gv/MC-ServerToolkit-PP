@@ -1,4 +1,4 @@
-# 🧰 MC-ServerToolkit
+# 🧰 MC-ServerToolkit++
 
 <p>
 <b>MC-ServerToolkit</b>, Minecraft sunucuları için geliştirilen;  
