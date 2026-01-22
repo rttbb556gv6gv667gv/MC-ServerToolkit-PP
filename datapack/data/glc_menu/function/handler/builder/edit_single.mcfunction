@@ -2,6 +2,9 @@
 # Tek İzin Düzenleme (MACRO) - DÜZELTİLDİ
 # ═══════════════════════════════════════════════════
 
+# Loading Göster
+function glc_menu:handler/dialog/loading {tick:21}
+
 # İzni geçici storage'a al
 $data modify storage mc:dialog temp.edit_perm set from storage mc:handler data.permissions[{id:"$(id)"}]
 
@@ -12,6 +15,3 @@ $data modify storage mc:dialog ui set value {type:"minecraft:multi_action",title
 data modify storage mc:dialog ui.inputs[0].initial set from storage mc:dialog temp.edit_perm.player
 data modify storage mc:dialog ui.inputs[1].initial set from storage mc:dialog temp.edit_perm.permission
 data modify storage mc:dialog ui.inputs[2].initial set from storage mc:dialog temp.edit_perm.level
-
-# ✅ YENİ: Sadece open çağır, show otomatik olacak
-function glc_menu:handler/dialog/open with storage mc:dialog
