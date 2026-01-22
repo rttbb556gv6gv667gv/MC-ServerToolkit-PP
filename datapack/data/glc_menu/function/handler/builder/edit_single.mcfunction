@@ -1,17 +1,16 @@
+
 # ═══════════════════════════════════════════════════
 # Tek İzin Düzenleme (MACRO) - DÜZELTİLDİ
 # ═══════════════════════════════════════════════════
 
 # Loading Göster
-function glc_menu:handler/dialog/loading {tick:21}
+function glc_menu:handler/dialog/loading {tick:49}
 
 # İzni geçici storage'a al
 $data modify storage mc:dialog temp.edit_perm set from storage mc:handler data.permissions[{id:"$(id)"}]
 
 # Düzenleme menüsü hazırla
-$data modify storage mc:dialog ui set value {type:"minecraft:multi_action",title:"✏️ Düzenle: $(id)",inputs:[{type:"minecraft:text",key:"player",label:"Oyuncu",max_length:100},{type:"minecraft:text",key:"permission",label:"İzin Adı",max_length:100},{type:"minecraft:text",key:"level",label:"Seviye",initial:"1",max_length:10}],can_close_with_escape:true,pause:false,actions:[{label:"💾 Kaydet",action:{type:"minecraft:run_command",command:"/function glc_menu:handler/utils/update_and_return {id:\"$(id)\"}"}},{label:"❌ İptal",action:{type:"minecraft:run_command",command:"/trigger gulce_menu set 2"}}]}
+data modify storage mc:dialog ui set value {  "type": "minecraft:multi_action",  "can_close_with_escape": true,  "pause": false,  "title": {    "text": "✏️ Düzenle: $(id)",    "color": "gold"  },  "inputs": [    {      "type": "minecraft:text",      "key": "player",      "label": "Oyuncu",      "max_length": 100    },    {      "type": "minecraft:text",      "key": "permission",      "label": "İzin Adı",      "max_length": 100    },    {      "type": "minecraft:text",      "key": "level",      "label": "Seviye",      "max_length": 10    },    {      "type": "minecraft:text",      "key": "id",      "label": "ID (Salt Okunur)",      "max_length": 100,      "initial": ""    }  ],  "actions": [    {      "label": "💾 Kaydet",      "action": {        "type": "minecraft:dynamic/run_command",        "template": "/function glc_menu:handler/utils/update_permission {id:\"$(id)\",player:\"$(player)\",permission:\"$(permission)\",level:$(level)}"      }    },    {      "label": "❌ İptal",      "action": {        "type": "minecraft:run_command","command":"/trigger gulce_menu set 2"}}]}
 
-# Input değerlerini doldur
-data modify storage mc:dialog ui.inputs[0].initial set from storage mc:dialog temp.edit_perm.player
-data modify storage mc:dialog ui.inputs[1].initial set from storage mc:dialog temp.edit_perm.permission
-data modify storage mc:dialog ui.inputs[2].initial set from storage mc:dialog temp.edit_perm.level
+# Debug
+tellraw @s[tag=gulce_debug] ["",{"text":"[GLC] ","color":"light_purple","bold":true},{"text":"Dialog gösterildi","color":"green"}]
