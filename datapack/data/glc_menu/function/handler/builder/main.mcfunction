@@ -3,6 +3,7 @@
 # ═══════════════════════════════════════════════════
 
 # Loading göster
+scoreboard players set @s gulce_load.dialog 4
 function glc_menu:handler/dialog/loading {tick:30}
 
 # Ana menü JSON'ı hazırla

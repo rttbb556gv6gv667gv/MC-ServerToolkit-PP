@@ -2,8 +2,9 @@
 # Düzenleme Menüsü Builder
 # ═══════════════════════════════════════════════════
 
-# Loading Göster
-function glc_menu:handler/dialog/loading {tick:21}
+# Loading göster
+scoreboard players set @s gulce_load.dialog 4
+function glc_menu:handler/dialog/loading {tick:30}
 
 # Menü hazırla
 data modify storage mc:dialog ui set value {type:"minecraft:multi_action",title:{"text":"✏️ Toplu Düzenleme","color":"yellow","bold":true},body:{type:"minecraft:plain_message",contents:"§l§eToplu İşlemler\n\n§7• Tüm İzinleri Sil\n§7• İzin Seviyelerini Sıfırla\n§7• Belirli Oyuncunun İzinlerini Sil"},can_close_with_escape:true,pause:false,actions:[]}

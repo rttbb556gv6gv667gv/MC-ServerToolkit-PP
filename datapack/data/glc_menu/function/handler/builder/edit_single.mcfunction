@@ -3,8 +3,9 @@
 # Tek İzin Düzenleme (MACRO) - DÜZELTİLDİ
 # ═══════════════════════════════════════════════════
 
-# Loading Göster
-function glc_menu:handler/dialog/loading {tick:49}
+# Loading göster
+scoreboard players set @s gulce_load.dialog 4
+function glc_menu:handler/dialog/loading {tick:30}
 
 # İzni geçici storage'a al
 $data modify storage mc:dialog temp.edit_perm set from storage mc:handler data.permissions[{id:"$(id)"}]

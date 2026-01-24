@@ -2,8 +2,9 @@
 # İzin Listesi Builder (Dinamik)
 # ═══════════════════════════════════════════════════
 
-# Loading Göster
-function glc_menu:handler/dialog/loading {tick:25}
+# Loading göster
+scoreboard players set @s gulce_load.dialog 4
+function glc_menu:handler/dialog/loading {tick:30}
 
 # İzin sayısını kontrol et
 execute store result score #perm_count gulce_id run data get storage mc:handler data.permissions
