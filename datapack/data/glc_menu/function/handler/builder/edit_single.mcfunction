@@ -4,8 +4,8 @@
 # ═══════════════════════════════════════════════════
 
 # Loading göster
-scoreboard players set @s gulce_load.dialog 4
-function glc_menu:handler/dialog/loading {tick:30}
+scoreboard players set @s gulce_load.dialog 20
+function glc_menu:handler/dialog/loading
 
 # İzni geçici storage'a al
 $data modify storage mc:dialog temp.edit_perm set from storage mc:handler data.permissions[{id:"$(id)"}]
@@ -16,4 +16,5 @@ $data modify storage mc:dialog ui.inputs[3].initial set value "$(id)"
 
 # Debug
 tellraw @s[tag=gulce_debug] ["",{"text":"[GLC] ","color":"light_purple","bold":true},{"text":"Dialog gösterildi","color":"green"}]
+
 
