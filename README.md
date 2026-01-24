@@ -1,4 +1,4 @@
-<details>
+<details open>
   <summary>🇬🇧 ENGLISH</summary>
 
 <h1 align="center">🧰 MC-ServerToolkit++</h1>
