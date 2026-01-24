@@ -4,7 +4,8 @@
 # ═══════════════════════════════════════════════════
 
 # Loading Göster
-function glc_menu:handler/dialog/loading {tick:49}
+scoreboard players set * gulce_load.dialog 19
+function glc_menu:handler/dialog/loading
 
 # İzni geçici storage'a al
 $data modify storage mc:dialog temp.edit_perm set from storage mc:handler data.permissions[{id:"$(id)"}]
