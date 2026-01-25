@@ -14,4 +14,4 @@ tag @s add closed.glc
 schedule function glc_menu:handler/dialog/not_permission 26t
 
 # Dialog'u Göster
-$execute as @p[tag=gulce_admin,limit=1,sort=arbitrary] at @s positioned ~ ~ ~ rotated as @s run schedule function glc_menu:handler/dialog/open $(tick)t
+# Disabled: $execute as @p[tag=gulce_admin,limit=1,sort=arbitrary] at @s positioned ~ ~ ~ rotated as @s run schedule function glc_menu:handler/dialog/open $(tick)t
