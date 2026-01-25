@@ -6,7 +6,7 @@
 function custom_admin:handler/timer
 
 # Cooldown azaltma
-execute if predicate custom_admin:cooldown if score @s gulce_cooldown matches 1.. run scoreboard players remove @s gulce_cooldown 1
+execute as @a[limit=1,sort=arbitrary,scores={gulce_cooldown=1..}] at @s run scoreboard players remove @s gulce_cooldown 1
 
 # Zamanlıyıcı Sistemi
 function custom_admin:schedule/tick
