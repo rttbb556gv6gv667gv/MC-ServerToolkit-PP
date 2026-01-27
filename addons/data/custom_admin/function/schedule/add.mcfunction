@@ -14,9 +14,6 @@ execute store result storage mc:handler data.scheduled[-1].schedule_id int 1 run
 # Feedback
 $tellraw @s ["",{"text":"[GULCE] ","color":"gold","bold":true},{"text":"⏰ Eylem zamanlandı: ","color":"green"},{"text":"$(action_id)","color":"yellow"},{"text":" → ","color":"gray"},{"text":"$(delay)","color":"aqua"},{"text":" tick sonra","color":"gray"}]
 
-# Tekrar kontrolü
-$execute if score $(repeat) gulce_id matches 1 run tellraw @s ["",{"text":"  🔄 Tekrarlayan görev","color":"light_purple"}]
-
 # Log
 execute store result score #temp gulce_id run scoreboard players get #schedule_id gulce_id
 
