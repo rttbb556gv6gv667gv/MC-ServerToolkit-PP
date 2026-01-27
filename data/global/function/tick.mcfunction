@@ -17,4 +17,4 @@ execute unless predicate actions:can_use_panel run clear @a[tag=!op] *[minecraft
 # ─────────────────────────────
 # SELF-RESCHEDULE (ÖNEMLİ!)
 # ─────────────────────────────
-schedule function global:tick 3t replace
+execute if data storage mc:config {Config:{Enabled:1b}} if score #global_tick global matches 1 run schedule function global:tick 3t replace
