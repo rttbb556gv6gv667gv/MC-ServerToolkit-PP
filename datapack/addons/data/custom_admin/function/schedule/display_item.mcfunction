@@ -2,11 +2,7 @@
 # Zamanlama Item Gösterici (MACRO)
 # ═══════════════════════════════════════════════════
 
-# Tekrar kontrolü
-$execute store result score #repeat_check gulce_id run data get storage mc:handler data.scheduled[{schedule_id:$(schedule_id)}].repeat
-
 # İkon seç
-execute if score #repeat_check gulce_id matches 1 run data modify storage mc:_ temp.icon set value "🔄"
 execute unless score #repeat_check gulce_id matches 1 run data modify storage mc:_ temp.icon set value "⏱️"
 
 # Göster
