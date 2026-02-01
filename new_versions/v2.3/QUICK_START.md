@@ -4,9 +4,9 @@
 
 ### Adım 1: Datapack'i Yükle
 ```bash
-1. datapack_improved.zip dosyasını indir
+1. v2.3.zip dosyasını indir
 2. Minecraft dünya klasörüne git: .minecraft/saves/DUNYA_ADI/datapacks/
-3. ZIP dosyasını buraya kopyala
+3. v2.3.zip/datapack klasörünü buraya kopyala
 4. Minecraft'a gir ve /reload yaz
 ```
 
