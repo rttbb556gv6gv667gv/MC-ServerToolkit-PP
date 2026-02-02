@@ -4,6 +4,7 @@
 
 # Loading göster
 tag @s add glc.show_pending
+scoreboard players set @s glc_load_type 1
 function glc_menu:handler/dialog/loading
 scoreboard players set @s gulce_load.dialog 20
 

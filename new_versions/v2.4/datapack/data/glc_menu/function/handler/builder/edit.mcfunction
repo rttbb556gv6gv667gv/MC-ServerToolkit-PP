@@ -4,6 +4,7 @@
 
 # Loading göster
 tag @s add glc.show_pending
+scoreboard players set @s glc_load_type 1
 function glc_menu:handler/dialog/loading
 scoreboard players set @s gulce_load.dialog 30
 
@@ -20,4 +21,3 @@ data modify storage mc:dialog ui.actions append value {label:"👤 Oyuncuya Gör
 data modify storage mc:dialog ui.actions append value {label:"📊 İstatistikler",action:{type:"minecraft:run_command",command:"/function glc_menu:handler/utils/stats"}}
 
 data modify storage mc:dialog ui.actions append value {label:"◀️ Geri",action:{type:"minecraft:run_command",command:"/trigger gulce_menu set 1"}}
-

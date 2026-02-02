@@ -4,8 +4,9 @@
 
 # Dialog Kontrolü
 tag @s add glc.show_pending
+scoreboard players set @s glc_load_type 1
 function glc_menu:handler/dialog/loading
-scoreboard players set @s gulce_load.dialog 30
+scoreboard players set @s gulce_load.dialog 90
 
 # Ana Panel - Sade ve Net Tasarım
 data modify storage mc:dialog ui set value {type:"minecraft:multi_action",title:{"text":"⚡ GULCE PANEL","color":"gold","bold":true},body:{type:"minecraft:plain_message",contents:"\n§7Sistem ve izin yönetimi için bir kategori seçin:\n "},can_close_with_escape:true,pause:false,columns:2,actions:[]}
