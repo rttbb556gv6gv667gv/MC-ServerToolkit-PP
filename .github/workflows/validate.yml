@@ -86,6 +86,25 @@ jobs:
             error_found=1
           fi
           
+          # Check for macro functions (starting with $)
+          if echo "$file" | grep -qE '/\$[^/]+\.mcfunction$'; then
+            # Check if the function uses macro syntax
+            if ! grep -qE '\$\(' "$file"; then
+              echo "Warning: Macro function name detected but no macro syntax in: $file"
+              echo "  -> Macro functions should contain \$(parameter) syntax"
+              warning_count=$((warning_count + 1))
+            fi
+          fi
+          
+          # Check for macro syntax in non-macro files
+          if ! echo "$file" | grep -qE '/\$[^/]+\.mcfunction$'; then
+            if grep -qE '\$\(' "$file"; then
+              echo "Warning: Macro syntax found in non-macro function: $file"
+              echo "  -> Function name should start with $ (e.g., \$function_name.mcfunction)"
+              warning_count=$((warning_count + 1))
+            fi
+          fi
+          
           # Check for common Minecraft command errors
           if grep -qE "^[[:space:]]*/give @[pares] minecraft:[a-z_]+ [0-9]+ [0-9]+$" "$file"; then
             echo "Warning: Old /give syntax detected in: $file"
