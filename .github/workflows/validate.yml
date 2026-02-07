@@ -61,52 +61,35 @@ jobs:
             filename=$(basename "$file")
             echo "Checking: $file"
             
-            # Empty file check
             if [ ! -s "$file" ]; then
               echo "Warning: Empty file: $file"
               warning_count=$((warning_count + 1))
               continue
             fi
             
-            # Check for non-ASCII characters (excluding valid whitespace)
-            if grep -P '[^\x00-\x7F]' "$file" > /dev/null 2>&1; then
-              # Show which line has the problem
-              while IFS= read -r line_info; do
-                line_num=$(echo "$line_info" | cut -d: -f1)
-                line_content=$(echo "$line_info" | cut -d: -f2-)
-                echo "Error: Non-ASCII characters found in: $file"
+            if grep -qP '[^\x00-\x7F]' "$file" 2>/dev/null; then
+              echo "Error: Non-ASCII characters found in: $file"
+              grep -n -P '[^\x00-\x7F]' "$file" | head -3 | while IFS=: read -r line_num line_content; do
                 echo "  Line $line_num: $line_content"
-                echo "  -> Remove non-ASCII characters (Turkish characters, special symbols, etc.)"
-                
-                # Show the problematic characters
-                echo "$line_content" | LC_ALL=C sed 's/[[:print:]]//g' | od -An -tx1 | head -1 | \
-                  xargs -n1 | while read hex; do
-                    echo "  -> Found byte: 0x$hex"
-                  done
-              done < <(grep -n -P '[^\x00-\x7F]' "$file")
+              done
               error_count=$((error_count + 1))
             fi
             
-            # Illegal command patterns check
             if grep -qE "^[[:space:]]*(sudo|rm -rf|wget|curl|eval)" "$file" 2>/dev/null; then
               echo "Error: Potentially dangerous command in: $file"
               error_count=$((error_count + 1))
             fi
             
-            # Check for macro functions (filename starts with $)
             if [[ "$filename" == \$* ]]; then
               if ! grep -qE '\$\(' "$file" 2>/dev/null; then
                 echo "Warning: Macro function '$filename' has no macro syntax"
-                echo "  -> Macro functions should contain \$(parameter) syntax"
                 warning_count=$((warning_count + 1))
               fi
             fi
             
-            # Check for macro syntax in non-macro files
             if [[ "$filename" != \$* ]]; then
               if grep -qE '\$\(' "$file" 2>/dev/null; then
                 echo "Warning: Macro syntax found in non-macro function '$filename'"
-                echo "  -> Function filename should start with \$"
                 warning_count=$((warning_count + 1))
               fi
             fi
