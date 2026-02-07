@@ -1,0 +1,119 @@
+name: Validate Datapack
+
+on:
+  pull_request:
+    paths:
+      - 'new_versions/**/datapack/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'new_versions/**/datapack/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+    
+    - name: Check JSON Syntax
+      run: |
+        echo "Checking JSON files..."
+        error_found=0
+        
+        for file in $(find new_versions -name "*.json" -type f); do
+          echo "Validating: $file"
+          if ! jq empty "$file" 2>/dev/null; then
+            echo "Error: Invalid JSON: $file"
+            error_found=1
+          fi
+        done
+        
+        if [ $error_found -eq 1 ]; then
+          echo "JSON validation failed!"
+          exit 1
+        fi
+        echo "All JSON files are valid!"
+    
+    - name: Check MCMETA Files
+      run: |
+        echo "Checking pack.mcmeta files..."
+        error_found=0
+        
+        for file in $(find new_versions -name "pack.mcmeta" -type f); do
+          echo "Validating: $file"
+          if ! jq '.pack.pack_format' "$file" > /dev/null 2>&1; then
+            echo "Error: Invalid pack.mcmeta: $file"
+            error_found=1
+          fi
+        done
+        
+        if [ $error_found -eq 1 ]; then
+          echo "pack.mcmeta validation failed!"
+          exit 1
+        fi
+        echo "All pack.mcmeta files are valid!"
+    
+    - name: Check Function Files
+      run: |
+        echo "Checking .mcfunction files..."
+        error_found=0
+        warning_count=0
+        
+        for file in $(find new_versions -name "*.mcfunction" -type f); do
+          echo "Checking: $file"
+          
+          # Empty file check
+          if [ ! -s "$file" ]; then
+            echo "Warning: Empty file: $file"
+            warning_count=$((warning_count + 1))
+          fi
+          
+          # Non-ASCII character check
+          if grep -q -P "[^\x20-\x7E\x09\x0A\x0D]" "$file"; then
+            echo "Error: Non-ASCII characters found in: $file"
+            error_found=1
+          fi
+          
+          # Illegal command patterns check
+          if grep -qE "^[[:space:]]*(sudo|rm -rf|wget|curl|eval)" "$file"; then
+            echo "Error: Potentially dangerous command in: $file"
+            error_found=1
+          fi
+          
+          # Check for common Minecraft command errors
+          if grep -qE "^[[:space:]]*/give @[pares] minecraft:[a-z_]+ [0-9]+ [0-9]+$" "$file"; then
+            echo "Warning: Old /give syntax detected in: $file (use NBT format)"
+            warning_count=$((warning_count + 1))
+          fi
+          
+          # Check for missing namespace in commands
+          if grep -qE "^[[:space:]]*/function [a-z_]+$" "$file"; then
+            echo "Warning: Function call without namespace in: $file"
+            warning_count=$((warning_count + 1))
+          fi
+          
+        done
+        
+        echo "=================================="
+        echo "Warnings found: $warning_count"
+        echo "=================================="
+        
+        if [ $error_found -eq 1 ]; then
+          echo "Function validation failed!"
+          exit 1
+        fi
+        
+        echo "Function files checked!"
+    
+    - name: Summary
+      if: success()
+      run: |
+        echo "==================================="
+        echo "Validation completed successfully!"
+        echo "==================================="
