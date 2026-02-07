@@ -1,0 +1,65 @@
+name: Datapack Security Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "new_versions/**/datapack/**"
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Scan datapack folders
+        id: scan
+        run: |
+          FOUND=0
+          DANGEROUS_FILES=()
+          
+          while IFS= read -r file; do
+            echo "::error file=$file,title=Security Violation::Dangerous file detected in datapack directory"
+            DANGEROUS_FILES+=("$file")
+            FOUND=1
+          done < <(
+            find new_versions -type f \( \
+              -name "*.exe" -o \
+              -name "*.sh" -o \
+              -name "*.jar" -o \
+              -name "*.bat" -o \
+              -name "*.cmd" -o \
+              -name "*.dll" -o \
+              -name "*.so" \
+            \) -path "*/datapack/*" 2>/dev/null
+          )
+          
+          if [ "$FOUND" -eq 1 ]; then
+            echo "Security scan failed!"
+            echo "Found ${#DANGEROUS_FILES[@]} dangerous file(s):"
+            printf '%s\n' "${DANGEROUS_FILES[@]}"
+            exit 1
+          else
+            echo "Security scan passed - no dangerous files found"
+          fi
+      
+      - name: Comment on PR
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **Security Scan Failed**\n\nDangerous executable files were detected in the datapack directories. Please remove these files before merging.\n\nCheck the workflow logs for details.'
+            })
