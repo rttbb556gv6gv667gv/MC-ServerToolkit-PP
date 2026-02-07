@@ -24,114 +24,110 @@ jobs:
     - name: Check JSON Syntax
       run: |
         echo "Checking JSON files..."
-        error_found=0
+        json_files=$(find new_versions -name "*.json" -type f)
         
-        find new_versions -name "*.json" -type f -print0 | while IFS= read -r -d '' file; do
-          echo "Validating: $file"
-          if ! jq empty "$file" 2>/dev/null; then
-            echo "Error: Invalid JSON: $file"
-            error_found=1
-          fi
-        done
-        
-        if [ $error_found -eq 1 ]; then
-          echo "JSON validation failed!"
-          exit 1
+        if [ -z "$json_files" ]; then
+          echo "No JSON files found"
+        else
+          for file in $json_files; do
+            echo "Validating: $file"
+            if ! jq empty "$file" 2>/dev/null; then
+              echo "Error: Invalid JSON: $file"
+              exit 1
+            fi
+          done
+          echo "All JSON files are valid!"
         fi
-        echo "All JSON files are valid!"
     
     - name: Check MCMETA Files
       run: |
         echo "Checking pack.mcmeta files..."
-        error_found=0
+        mcmeta_files=$(find new_versions -name "pack.mcmeta" -type f)
         
-        find new_versions -name "pack.mcmeta" -type f -print0 | while IFS= read -r -d '' file; do
-          echo "Validating: $file"
-          if ! jq '.pack.pack_format' "$file" > /dev/null 2>&1; then
-            echo "Error: Invalid pack.mcmeta: $file"
-            error_found=1
-          fi
-        done
-        
-        if [ $error_found -eq 1 ]; then
-          echo "pack.mcmeta validation failed!"
+        if [ -z "$mcmeta_files" ]; then
+          echo "No pack.mcmeta files found"
           exit 1
+        else
+          for file in $mcmeta_files; do
+            echo "Validating: $file"
+            if ! jq '.pack.pack_format' "$file" > /dev/null 2>&1; then
+              echo "Error: Invalid pack.mcmeta: $file"
+              exit 1
+            fi
+          done
+          echo "All pack.mcmeta files are valid!"
         fi
-        echo "All pack.mcmeta files are valid!"
     
     - name: Check Function Files
       run: |
         echo "Checking .mcfunction files..."
-        error_found=0
+        mcfunction_files=$(find new_versions -name "*.mcfunction" -type f)
         warning_count=0
         
-        find new_versions -name "*.mcfunction" -type f -print0 | while IFS= read -r -d '' file; do
-          filename=$(basename "$file")
-          echo "Checking: $file"
-          
-          # Empty file check
-          if [ ! -s "$file" ]; then
-            echo "Warning: Empty file: $file"
-            warning_count=$((warning_count + 1))
-          fi
-          
-          # Non-ASCII character check
-          if grep -q -P "[^\x20-\x7E\x09\x0A\x0D]" "$file"; then
-            echo "Error: Non-ASCII characters found in: $file"
-            error_found=1
-          fi
-          
-          # Illegal command patterns check
-          if grep -qE "^[[:space:]]*(sudo|rm -rf|wget|curl|eval)" "$file"; then
-            echo "Error: Potentially dangerous command in: $file"
-            error_found=1
-          fi
-          
-          # Check for macro functions (filename starts with $)
-          if [[ "$filename" == \$* ]]; then
-            # Check if the function uses macro syntax
-            if ! grep -qE '\$\(' "$file"; then
-              echo "Warning: Macro function '$filename' has no macro syntax"
-              echo "  -> File: $file"
-              echo "  -> Macro functions should contain \$(parameter) syntax"
+        if [ -z "$mcfunction_files" ]; then
+          echo "No .mcfunction files found"
+        else
+          for file in $mcfunction_files; do
+            filename=$(basename "$file")
+            echo "Checking: $file"
+            
+            # Empty file check
+            if [ ! -s "$file" ]; then
+              echo "Warning: Empty file: $file"
               warning_count=$((warning_count + 1))
             fi
-          fi
-          
-          # Check for macro syntax in non-macro files
-          if [[ "$filename" != \$* ]]; then
-            if grep -qE '\$\(' "$file"; then
-              echo "Warning: Macro syntax found in non-macro function '$filename'"
-              echo "  -> File: $file"
-              echo "  -> Function filename should start with \$ (e.g., \$function_name.mcfunction)"
+            
+            # Non-ASCII character check
+            if grep -q -P "[^\x20-\x7E\x09\x0A\x0D]" "$file" 2>/dev/null; then
+              echo "Error: Non-ASCII characters found in: $file"
+              exit 1
+            fi
+            
+            # Illegal command patterns check
+            if grep -qE "^[[:space:]]*(sudo|rm -rf|wget|curl|eval)" "$file" 2>/dev/null; then
+              echo "Error: Potentially dangerous command in: $file"
+              exit 1
+            fi
+            
+            # Check for macro functions (filename starts with $)
+            if [[ "$filename" == \$* ]]; then
+              if ! grep -qE '\$\(' "$file" 2>/dev/null; then
+                echo "Warning: Macro function '$filename' has no macro syntax"
+                echo "  -> File: $file"
+                echo "  -> Macro functions should contain \$(parameter) syntax"
+                warning_count=$((warning_count + 1))
+              fi
+            fi
+            
+            # Check for macro syntax in non-macro files
+            if [[ "$filename" != \$* ]]; then
+              if grep -qE '\$\(' "$file" 2>/dev/null; then
+                echo "Warning: Macro syntax found in non-macro function '$filename'"
+                echo "  -> File: $file"
+                echo "  -> Function filename should start with \$ (e.g., \$function_name.mcfunction)"
+                warning_count=$((warning_count + 1))
+              fi
+            fi
+            
+            # Check for common Minecraft command errors
+            if grep -qE "^[[:space:]]*/give @[pares] minecraft:[a-z_]+ [0-9]+ [0-9]+$" "$file" 2>/dev/null; then
+              echo "Warning: Old /give syntax detected in: $file"
               warning_count=$((warning_count + 1))
             fi
-          fi
+            
+            # Check for missing namespace in commands
+            if grep -qE "^[[:space:]]*/function [a-z_]+$" "$file" 2>/dev/null; then
+              echo "Warning: Function call without namespace in: $file"
+              warning_count=$((warning_count + 1))
+            fi
+            
+          done
           
-          # Check for common Minecraft command errors
-          if grep -qE "^[[:space:]]*/give @[pares] minecraft:[a-z_]+ [0-9]+ [0-9]+$" "$file"; then
-            echo "Warning: Old /give syntax detected in: $file"
-            warning_count=$((warning_count + 1))
-          fi
-          
-          # Check for missing namespace in commands
-          if grep -qE "^[[:space:]]*/function [a-z_]+$" "$file"; then
-            echo "Warning: Function call without namespace in: $file"
-            warning_count=$((warning_count + 1))
-          fi
-          
-        done
-        
-        echo "=================================="
-        echo "Warnings found: $warning_count"
-        echo "=================================="
-        
-        if [ $error_found -eq 1 ]; then
-          echo "Function validation failed!"
-          exit 1
+          echo "=================================="
+          echo "Warnings found: $warning_count"
+          echo "=================================="
+          echo "Function files checked!"
         fi
-        
-        echo "Function files checked!"
     
     - name: Summary
       if: success()
