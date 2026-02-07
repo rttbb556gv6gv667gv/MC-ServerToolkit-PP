@@ -1,58 +1,67 @@
-name: Clean Dangerous Files
+name: Datapack Security Check
 
 on:
-  push:
-    paths:
-      - new_versions/**
   pull_request:
+    branches:
+      - main
     paths:
-      - new_versions/**
+      - "new_versions/**/datapack/**"
   workflow_dispatch:
 
 jobs:
-  clean-files:
+  scan:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      pull-requests: write  # PR'a yorum yapabilmek için
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Scan datapacks
+          fetch-depth: 0  # Tüm geçmişi çek (isteğe bağlı)
+      
+      - name: Scan datapack folders
         id: scan
-        shell: bash
         run: |
-          set -e
-
-          DANGEROUS_EXTENSIONS="sh js exe bat cmd ps1 py rb pl jar dll so dylib vbs com msi app deb rpm"
-          DELETED=0
-
-          for ext in $DANGEROUS_EXTENSIONS; do
-            while IFS= read -r file; do
-              echo "Found dangerous file: $file"
-
-              if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-                echo "::error file=$file::.$ext files are not allowed in datapacks"
-                DELETED=1
-              else
-                rm -f "$file"
-                DELETED=1
-              fi
-            done < <(find new_versions -type f -name "*.$ext" -path "*datapack*" 2>/dev/null)
-          done
-
-          echo "file_found=$DELETED" >> "$GITHUB_OUTPUT"
-
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ "$DELETED" -eq 1 ]; then
+          FOUND=0
+          DANGEROUS_FILES=()
+          
+          # Tehlikeli dosyaları bul
+          while IFS= read -r file; do
+            echo "::error file=$file,title=Security Violation::Dangerous file detected in datapack directory"
+            DANGEROUS_FILES+=("$file")
+            FOUND=1
+          done < <(
+            find new_versions -type f \( \
+              -name "*.exe" -o \
+              -name "*.sh" -o \
+              -name "*.jar" -o \
+              -name "*.bat" -o \
+              -name "*.cmd" -o \
+              -name "*.dll" -o \
+              -name "*.so" \
+            \) -path "*/datapack/*" 2>/dev/null
+          )
+          
+          # Sonuçları yazdır
+          if [ "$FOUND" -eq 1 ]; then
+            echo "❌ Security scan failed!"
+            echo "Found ${#DANGEROUS_FILES[@]} dangerous file(s):"
+            printf '%s\n' "${DANGEROUS_FILES[@]}"
             exit 1
+          else
+            echo "✅ Security scan passed - no dangerous files found"
           fi
-
-      - name: Commit changes
-        if: github.event_name != 'pull_request' && steps.scan.outputs.file_found == '1'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Security: remove dangerous files from datapacks"
-          git push
+      
+      - name: Comment on PR
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **Security Scan Failed**\n\nDangerous executable files were detected in the datapack directories. Please remove these files before merging.\n\nCheck the workflow logs for details.'
+            })
