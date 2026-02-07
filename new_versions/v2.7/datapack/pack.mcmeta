@@ -23,12 +23,8 @@
   "filter": {
     "block": [
       {
-        "namespace": "vc_experimental",
-        "path": "function/admin_mode"
-      },
-      {
         "namespace": "minecraft",
-        "path": ".*\\.(txt|md|log|bak|tmp|js|html|tsx|sh|c|css|exe|jar|zip|txt|apk|cmd|bat|py)$"
+        "path": ".*\\.(txt|md|log|bak|tmp|js|html|tsx|sh|c|css|exe|jar|zip|apk|cmd|bat|py)$"
       }
     ]
   },
@@ -40,15 +36,6 @@
           "max_inclusive": 94
         },
         "directory": "addons",
-        "min_format": 81,
-        "max_format": 94
-      },
-      {
-        "formats": {
-          "min_inclusive": 81,
-          "max_inclusive": 94
-        },
-        "directory": "legacy",
         "min_format": 81,
         "max_format": 94
       }
