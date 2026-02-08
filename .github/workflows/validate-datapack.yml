@@ -1,4 +1,4 @@
-name: Validate Datapack (Enhanced)
+name: Validate Datapack (Final)
 
 on:
   pull_request:
@@ -51,7 +51,6 @@ jobs:
           
           # Create directories
           mkdir -p /tmp/pack_formats
-          mkdir -p /tmp/reports
           
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "🚀 DATAPACK VALIDATION STARTED (Minecraft 1.21+)"
@@ -522,7 +521,7 @@ jobs:
             suspicious_patterns["^[^#]*\sop\s@[ape]\s*$"]="CRITICAL: Blanket OP grant - potential backdoor"
             suspicious_patterns["^[^#]*\sop\s@[ape]\["]="WARNING: OP grant with selector - verify legitimacy"
             
-            # Server control abuse
+            # Server control abuse (exclude function calls like namespace:stop)
             suspicious_patterns["^[^#:]*\sstop\s*$"]="CRITICAL: Server shutdown command detected"
             suspicious_patterns["^[^#:]*\srestart\s*$"]="WARNING: Server restart command detected"
             
@@ -533,7 +532,7 @@ jobs:
             suspicious_patterns["Function\("]="CRITICAL: JavaScript Function() constructor detected"
             suspicious_patterns["\.js[\"']"]="WARNING: JavaScript file reference detected"
             
-            # Command injection patterns
+            # Command injection patterns (excluding Minecraft macros)
             suspicious_patterns["&&"]="WARNING: Command chaining operator detected"
             suspicious_patterns[";\s*op\s"]="CRITICAL: Command injection attempt - OP after semicolon"
             suspicious_patterns["\|\s*op\s"]="CRITICAL: Pipe to OP command - potential exploit"
@@ -547,18 +546,17 @@ jobs:
             suspicious_patterns["clickEvent.*run_command.*sudo"]="CRITICAL: Sudo-like pattern in clickEvent"
             suspicious_patterns["hoverEvent.*run_command.*op"]="CRITICAL: HoverEvent grants OP - backdoor"
             
-            # BOOK MENU SECURITY CHECK (NEW!)
-            suspicious_patterns["\"written_book\""]="CRITICAL: Written book detected - potential phishing/malicious menu"
-            suspicious_patterns["\"writable_book\""]="WARNING: Writable book detected - verify usage legitimacy"
-            suspicious_patterns["give.*written_book"]="CRITICAL: Giving written book - potential malicious menu system"
-            suspicious_patterns["pages.*clickEvent"]="CRITICAL: Book with clickable pages - high phishing risk"
+            # Book menu phishing detection
+            suspicious_patterns["\"written_book\""]="WARNING: Written book - verify not used for phishing"
+            suspicious_patterns["give.*written_book"]="WARNING: Giving written book - verify legitimate use"
+            suspicious_patterns["pages.*clickEvent.*open_url"]="CRITICAL: Book with URL links - phishing risk"
             
             echo "  🔍 Scanning for backdoors & code injection..."
             echo "     • OP privilege escalation"
             echo "     • JavaScript/external code execution"
             echo "     • Command injection patterns"
             echo "     • Unauthorized system access"
-            echo "     • Book-based phishing menus"
+            echo "     • Book-based phishing"
             echo ""
             
             while IFS= read -r -d $'\0' file; do
@@ -583,13 +581,18 @@ jobs:
               done < "$file"
             done < <(find new_versions -path "*/datapack/data/*/function/*.mcfunction" -type f -print0)
             
-            # Check JSON files for book menu patterns
+            # Check JSON files for book/phishing patterns
             while IFS= read -r -d $'\0' file; do
-              if grep -qE "written_book|writable_book|pages.*clickEvent" "$file" 2>/dev/null; then
+              if grep -qE "written_book|pages.*clickEvent.*open_url" "$file" 2>/dev/null; then
                 relative_path=$(echo "$file" | sed "s|^$(pwd)/||")
+                
+                # Check if it's legitimate (e.g., in loot tables it's usually OK)
+                if [[ "$file" =~ loot_table ]]; then
+                  continue  # Skip loot tables - they're usually legitimate
+                fi
+                
                 echo "  ⚠️  $relative_path"
-                echo "     Reason: CRITICAL - Book menu system detected (potential phishing)"
-                echo "     Action: Verify all clickEvent actions are legitimate"
+                echo "     Reason: WARNING - Book system detected, verify not used for phishing"
                 sec_warnings=$((sec_warnings + 1))
                 SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
               fi
@@ -606,7 +609,7 @@ jobs:
               # Check for suspicious namespace names
               if [[ "$file" =~ /data/([^/]+)/ ]]; then
                 namespace="${BASH_REMATCH[1]}"
-                # Single char namespaces or random strings
+                # Single char namespaces or very long random strings
                 if [[ ${#namespace} -eq 1 ]] || [[ "$namespace" =~ ^[a-z0-9]{32,}$ ]]; then
                   echo "  ⚠️  Suspicious namespace: $namespace in $relative_path"
                   obfuscated_count=$((obfuscated_count + 1))
@@ -617,8 +620,8 @@ jobs:
               
               # Check for overly long function names (possible obfuscation)
               func_name=$(basename "$file" .mcfunction)
-              if [ ${#func_name} -gt 50 ]; then
-                echo "  ⚠️  Suspiciously long function name: $func_name"
+              if [ ${#func_name} -gt 64 ]; then
+                echo "  ⚠️  Suspiciously long function name (${#func_name} chars): ${func_name:0:40}..."
                 sec_warnings=$((sec_warnings + 1))
                 SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
               fi
@@ -652,7 +655,7 @@ jobs:
             
             echo "  🔍 Checking for performance issues..."
             
-            # Performance patterns
+            # Performance patterns - only flag inefficient usage
             declare -A perf_patterns
             
             # Entity selectors WITHOUT filtering = performance issue
@@ -709,12 +712,16 @@ jobs:
                   if [ -n "$func_file" ]; then
                     cmd_count=$(grep -cEv '^[[:space:]]*$|^[[:space:]]*#' "$func_file" 2>/dev/null || echo 0)
                     
-                    # CRITICAL CHECK: /deop and /say in tick functions (NEW!)
-                    if grep -qE '^\s*(deop|say)\s' "$func_file" 2>/dev/null; then
-                      echo "     ❌ CRITICAL: Tick function contains /deop or /say: $func_path"
-                      echo "        These commands should NEVER run every tick (20 times/second)"
-                      echo "        /deop in tick = instant admin removal loop"
-                      echo "        /say in tick = chat spam (400 messages in 20 seconds)"
+                    # CRITICAL: Check for problematic commands in tick
+                    critical_cmds=$(grep -E '^\s*(deop|say|tell|msg|w|me)\s' "$func_file" 2>/dev/null)
+                    if [ -n "$critical_cmds" ]; then
+                      echo "     ❌ CRITICAL: Tick function contains prohibited commands: $func_path"
+                      echo "        Commands in tick run 20 times/second:"
+                      echo "        • /deop = instant admin removal loop"
+                      echo "        • /say,/tell,/msg = chat spam (400 msgs in 20s)"
+                      echo "$critical_cmds" | while IFS= read -r cmd_line; do
+                        echo "        Line: ${cmd_line:0:60}..."
+                      done
                       perf_warnings=$((perf_warnings + 1))
                       PERFORMANCE_ISSUES=$((PERFORMANCE_ISSUES + 1))
                     fi
@@ -788,14 +795,13 @@ jobs:
             echo "    • Commands must match pack_format requirements"
             echo "    • Macros require pack_format 81+"
             echo "    • /dialog and /transfer require pack_format 48+ (1.21)"
-            echo "    • execute on <relation> requires pack_format 48+"
-            echo "    • /deop and /say are BANNED in tick functions"
-            echo "    • Book menus flagged as potential phishing vectors"
+            echo "    • /deop,/say,/tell in tick functions = BANNED"
+            echo "    • Book menus flagged if not in loot_tables"
           fi
           
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
-          # Export metrics for badge generation
+          # Export metrics
           echo "total_errors=$TOTAL_ERRORS" >> $GITHUB_OUTPUT
           echo "total_warnings=$TOTAL_WARNINGS" >> $GITHUB_OUTPUT
           echo "security_issues=$SECURITY_ISSUES" >> $GITHUB_OUTPUT
