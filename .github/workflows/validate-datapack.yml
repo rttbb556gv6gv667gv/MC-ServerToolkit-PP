@@ -505,7 +505,7 @@ jobs:
           echo ""
           
           # ═══════════════════════════════════════════════════
-          # 7. SECURITY ANALYSIS (NEW!)
+          # 7. SECURITY ANALYSIS
           # ═══════════════════════════════════════════════════
           if [ "$SECURITY_CHECK" = "true" ]; then
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -516,25 +516,24 @@ jobs:
             sec_warnings=0
             
             # BACKDOOR & PRIVILEGE ESCALATION PATTERNS
-            # Focus on actual security threats like unauthorized OP, command injection, external code
             declare -A suspicious_patterns
             
             # Admin privilege abuse (OP without selectors = backdoor)
             suspicious_patterns["^[^#]*\sop\s@[ape]\s*$"]="CRITICAL: Blanket OP grant - potential backdoor"
             suspicious_patterns["^[^#]*\sop\s@[ape]\["]="WARNING: OP grant with selector - verify legitimacy"
             
-            # Server control abuse (exclude function calls like namespace:stop)
+            # Server control abuse
             suspicious_patterns["^[^#:]*\sstop\s*$"]="CRITICAL: Server shutdown command detected"
             suspicious_patterns["^[^#:]*\srestart\s*$"]="WARNING: Server restart command detected"
             
-            # External code execution attempts (JavaScript, command injection)
+            # External code execution attempts
             suspicious_patterns["<script"]="CRITICAL: JavaScript injection attempt in NBT/JSON"
             suspicious_patterns["javascript:"]="CRITICAL: JavaScript protocol in clickEvent"
             suspicious_patterns["eval\("]="CRITICAL: JavaScript eval() detected"
             suspicious_patterns["Function\("]="CRITICAL: JavaScript Function() constructor detected"
             suspicious_patterns["\.js[\"']"]="WARNING: JavaScript file reference detected"
             
-            # Command injection patterns (excluding Minecraft macros)
+            # Command injection patterns
             suspicious_patterns["&&"]="WARNING: Command chaining operator detected"
             suspicious_patterns[";\s*op\s"]="CRITICAL: Command injection attempt - OP after semicolon"
             suspicious_patterns["\|\s*op\s"]="CRITICAL: Pipe to OP command - potential exploit"
@@ -543,17 +542,25 @@ jobs:
             suspicious_patterns["file://"]="CRITICAL: File protocol - potential file system access"
             suspicious_patterns["\.\.\/"]="WARNING: Directory traversal pattern detected"
             
-            # Phishing & malicious URLs (only without legitimate context)
+            # Phishing & malicious URLs
             suspicious_patterns["clickEvent.*run_command.*op"]="CRITICAL: ClickEvent grants OP - backdoor"
             suspicious_patterns["clickEvent.*run_command.*sudo"]="CRITICAL: Sudo-like pattern in clickEvent"
             suspicious_patterns["hoverEvent.*run_command.*op"]="CRITICAL: HoverEvent grants OP - backdoor"
+            
+            # BOOK MENU SECURITY CHECK (NEW!)
+            suspicious_patterns["\"written_book\""]="CRITICAL: Written book detected - potential phishing/malicious menu"
+            suspicious_patterns["\"writable_book\""]="WARNING: Writable book detected - verify usage legitimacy"
+            suspicious_patterns["give.*written_book"]="CRITICAL: Giving written book - potential malicious menu system"
+            suspicious_patterns["pages.*clickEvent"]="CRITICAL: Book with clickable pages - high phishing risk"
             
             echo "  🔍 Scanning for backdoors & code injection..."
             echo "     • OP privilege escalation"
             echo "     • JavaScript/external code execution"
             echo "     • Command injection patterns"
             echo "     • Unauthorized system access"
+            echo "     • Book-based phishing menus"
             echo ""
+            
             while IFS= read -r -d $'\0' file; do
               relative_path=$(echo "$file" | sed "s|^$(pwd)/||")
               line_num=0
@@ -575,6 +582,18 @@ jobs:
                 done
               done < "$file"
             done < <(find new_versions -path "*/datapack/data/*/function/*.mcfunction" -type f -print0)
+            
+            # Check JSON files for book menu patterns
+            while IFS= read -r -d $'\0' file; do
+              if grep -qE "written_book|writable_book|pages.*clickEvent" "$file" 2>/dev/null; then
+                relative_path=$(echo "$file" | sed "s|^$(pwd)/||")
+                echo "  ⚠️  $relative_path"
+                echo "     Reason: CRITICAL - Book menu system detected (potential phishing)"
+                echo "     Action: Verify all clickEvent actions are legitimate"
+                sec_warnings=$((sec_warnings + 1))
+                SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
+              fi
+            done < <(find new_versions -name "*.json" -type f -print0)
             
             # Check for obfuscated code
             echo ""
@@ -622,7 +641,7 @@ jobs:
           fi
           
           # ═══════════════════════════════════════════════════
-          # 8. PERFORMANCE ANALYSIS (NEW!)
+          # 8. PERFORMANCE ANALYSIS
           # ═══════════════════════════════════════════════════
           if [ "$PERFORMANCE_CHECK" = "true" ]; then
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -633,7 +652,7 @@ jobs:
             
             echo "  🔍 Checking for performance issues..."
             
-            # Performance patterns - only flag inefficient usage
+            # Performance patterns
             declare -A perf_patterns
             
             # Entity selectors WITHOUT filtering = performance issue
@@ -689,6 +708,17 @@ jobs:
                   func_file=$(find new_versions -path "*/function/${func_path#*:}.mcfunction" -type f 2>/dev/null | head -1)
                   if [ -n "$func_file" ]; then
                     cmd_count=$(grep -cEv '^[[:space:]]*$|^[[:space:]]*#' "$func_file" 2>/dev/null || echo 0)
+                    
+                    # CRITICAL CHECK: /deop and /say in tick functions (NEW!)
+                    if grep -qE '^\s*(deop|say)\s' "$func_file" 2>/dev/null; then
+                      echo "     ❌ CRITICAL: Tick function contains /deop or /say: $func_path"
+                      echo "        These commands should NEVER run every tick (20 times/second)"
+                      echo "        /deop in tick = instant admin removal loop"
+                      echo "        /say in tick = chat spam (400 messages in 20 seconds)"
+                      perf_warnings=$((perf_warnings + 1))
+                      PERFORMANCE_ISSUES=$((PERFORMANCE_ISSUES + 1))
+                    fi
+                    
                     if [ "$cmd_count" -gt 50 ]; then
                       echo "     ⚠️  Large tick function: $func_path ($cmd_count commands)"
                       perf_warnings=$((perf_warnings + 1))
@@ -759,6 +789,8 @@ jobs:
             echo "    • Macros require pack_format 81+"
             echo "    • /dialog and /transfer require pack_format 48+ (1.21)"
             echo "    • execute on <relation> requires pack_format 48+"
+            echo "    • /deop and /say are BANNED in tick functions"
+            echo "    • Book menus flagged as potential phishing vectors"
           fi
           
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
